@@ -219,60 +219,132 @@ function renderOrders() {
 }
 
 // ฟังก์ชันสำหรับแก้ไขออเดอร์
-function editOrder(index) {
-  try {
-    let allOrders = [];
-    const allKeys = Object.keys(localStorage).filter(key => key.startsWith('orders-'));
-    
-    // ดึงข้อมูลออเดอร์จากทุกวันและเพิ่ม orderKey
-    allKeys.forEach(key => {
-      const dayOrders = JSON.parse(localStorage.getItem(key) || '[]');
-      allOrders = allOrders.concat(dayOrders.map(order => ({ ...order, orderKey: key })));
-    });
-    
-    // เรียงลำดับตามเวลาล่าสุด (เหมือนกับที่แสดงในหน้าเว็บ)
-    allOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    
-    // ตรวจสอบว่า index ถูกต้องหรือไม่
-    if (index < 0 || index >= allOrders.length) {
-      showToast('ไม่พบข้อมูลออเดอร์ (index ไม่ถูกต้อง)', 'danger');
-      return;
-    }
-    
-    const selectedOrder = allOrders[index];
-    if (!selectedOrder) {
-      showToast('ไม่พบข้อมูลออเดอร์', 'danger');
-      return;
-    }
-    
-    // ตรวจสอบว่ามี orderKey หรือไม่
-    if (!selectedOrder.orderKey) {
-      showToast('ไม่พบข้อมูลวันที่ของออเดอร์', 'danger');
-      return;
-    }
-    
-    // กำหนดค่าให้กับฟอร์มแก้ไข
-    document.getElementById('edit-order-index').value = index;
-    document.getElementById('edit-orderId').value = selectedOrder.orderId;
-    document.getElementById('edit-customer').value = selectedOrder.customer;
-    document.getElementById('edit-game').value = selectedOrder.game;
-    document.getElementById('edit-package').value = selectedOrder.package;
-    document.getElementById('edit-channel').value = selectedOrder.channel;
-    document.getElementById('edit-rate').value = selectedOrder.rate || 'N/A';
-    document.getElementById('edit-admin').value = selectedOrder.admin;
-    document.getElementById('edit-amount').value = selectedOrder.amount;
-    document.getElementById('edit-timestamp').value = selectedOrder.timestamp;
-    document.getElementById('edit-orderKey').value = selectedOrder.orderKey;
-    
-    // แสดงหรือซ่อนฟิลด์อัตราแลกเปลี่ยนตามช่องทางที่เลือก
-    toggleEditRateField();
-    
-    // แสดง Modal แก้ไขออเดอร์
-    new bootstrap.Modal(document.getElementById('editOrderModal')).show();
-  } catch (error) {
-    console.error('Error editing order:', error);
-    showToast('เกิดข้อผิดพลาดในการแก้ไขข้อมูล', 'danger');
+// Add this function to properly handle the edit order modal
+function editOrder(orderKey) {
+  // Get the order data from localStorage
+  const orders = JSON.parse(localStorage.getItem('orders')) || [];
+  const orderToEdit = orders.find(order => order.orderKey === orderKey);
+  
+  if (!orderToEdit) {
+    showToast('ไม่พบข้อมูลออเดอร์', 'error');
+    return;
   }
+  
+  // Fill the edit form with the order data
+  document.getElementById('edit-orderKey').value = orderToEdit.orderKey;
+  document.getElementById('edit-customer').value = orderToEdit.customer;
+  document.getElementById('edit-orderId').value = orderToEdit.orderId || '';
+  document.getElementById('edit-game').value = orderToEdit.game;
+  document.getElementById('edit-package').value = orderToEdit.package;
+  document.getElementById('edit-channel').value = orderToEdit.channel;
+  document.getElementById('edit-admin').value = orderToEdit.admin;
+  document.getElementById('edit-amount').value = orderToEdit.amount;
+  document.getElementById('edit-timestamp').value = orderToEdit.timestamp;
+  
+  // Handle the rate field visibility
+  if (orderToEdit.channel === 'อื่นๆ') {
+    document.getElementById('edit-rateGroup').style.display = 'block';
+    document.getElementById('edit-rate').value = orderToEdit.rate || '';
+  } else {
+    document.getElementById('edit-rateGroup').style.display = 'none';
+  }
+  
+  // Show the modal
+  const editModal = new bootstrap.Modal(document.getElementById('editOrderModal'));
+  editModal.show();
+}
+
+// Add this function to update the order
+function updateOrder() {
+  // Get the order data from the form
+  const orderKey = document.getElementById('edit-orderKey').value;
+  const customer = document.getElementById('edit-customer').value;
+  const orderId = document.getElementById('edit-orderId').value;
+  const game = document.getElementById('edit-game').value;
+  const packageName = document.getElementById('edit-package').value;
+  const channel = document.getElementById('edit-channel').value;
+  const admin = document.getElementById('edit-admin').value;
+  const amount = document.getElementById('edit-amount').value;
+  const timestamp = document.getElementById('edit-timestamp').value;
+  
+  // Validate required fields
+  if (!customer || !game || !packageName || !channel || !admin || !amount) {
+    showToast('กรุณากรอกข้อมูลให้ครบถ้วน', 'error');
+    return;
+  }
+  
+  // Get the rate if channel is 'อื่นๆ'
+  let rate = null;
+  if (channel === 'อื่นๆ') {
+    rate = document.getElementById('edit-rate').value;
+  }
+  
+  // Get all orders from localStorage
+  const orders = JSON.parse(localStorage.getItem('orders')) || [];
+  
+  // Find the order to update
+  const orderIndex = orders.findIndex(order => order.orderKey === orderKey);
+  
+  if (orderIndex === -1) {
+    showToast('ไม่พบข้อมูลออเดอร์', 'error');
+    return;
+  }
+  
+  // Update the order
+  orders[orderIndex] = {
+    orderKey,
+    customer,
+    orderId,
+    game,
+    package: packageName,
+    channel,
+    admin,
+    amount: parseFloat(amount),
+    timestamp,
+    rate
+  };
+  
+  // Save the updated orders to localStorage
+  localStorage.setItem('orders', JSON.stringify(orders));
+  
+  // Close the modal
+  const editModal = bootstrap.Modal.getInstance(document.getElementById('editOrderModal'));
+  editModal.hide();
+  
+  // Refresh the order list
+  displayOrders();
+  
+  // Show success message
+  showToast('อัปเดตออเดอร์เรียบร้อยแล้ว', 'success');
+}
+
+// Add this function to toggle the rate field in the edit form
+function toggleEditRateField() {
+  const channel = document.getElementById('edit-channel').value;
+  const rateGroup = document.getElementById('edit-rateGroup');
+  
+  if (channel === 'อื่นๆ') {
+    rateGroup.style.display = 'block';
+  } else {
+    rateGroup.style.display = 'none';
+  }
+}
+
+// Add this function to show toast notifications
+function showToast(message, type = 'success') {
+  const toast = document.getElementById('toast');
+  const toastMessage = document.getElementById('toast-message');
+  
+  // Set the message
+  toastMessage.textContent = message;
+  
+  // Set the toast type (success or error)
+  toast.classList.remove('bg-success', 'bg-danger');
+  toast.classList.add(type === 'success' ? 'bg-success' : 'bg-danger');
+  
+  // Show the toast
+  const bsToast = new bootstrap.Toast(toast);
+  bsToast.show();
 }
 
 function deleteOrder(index) {
