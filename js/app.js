@@ -219,39 +219,54 @@ function renderOrders() {
 }
 
 // ฟังก์ชันสำหรับแก้ไขออเดอร์
-// Add this function to properly handle the edit order modal
-function editOrder(orderKey) {
-  // Get the order data from localStorage
-  const orders = JSON.parse(localStorage.getItem('orders')) || [];
-  const orderToEdit = orders.find(order => order.orderKey === orderKey);
-  
-  if (!orderToEdit) {
-    showToast('ไม่พบข้อมูลออเดอร์', 'error');
-    return;
-  }
-  
-  // Fill the edit form with the order data
-  document.getElementById('edit-orderKey').value = orderToEdit.orderKey;
-  document.getElementById('edit-customer').value = orderToEdit.customer;
-  document.getElementById('edit-orderId').value = orderToEdit.orderId || '';
-  document.getElementById('edit-game').value = orderToEdit.game;
-  document.getElementById('edit-package').value = orderToEdit.package;
-  document.getElementById('edit-channel').value = orderToEdit.channel;
-  document.getElementById('edit-admin').value = orderToEdit.admin;
-  document.getElementById('edit-amount').value = orderToEdit.amount;
-  document.getElementById('edit-timestamp').value = orderToEdit.timestamp;
-  
-  // Handle the rate field visibility
-  if (orderToEdit.channel === 'อื่นๆ') {
+function editOrder(index) {
+  try {
+    // หาออเดอร์จากทุกวัน
+    let allOrders = [];
+    const allKeys = Object.keys(localStorage).filter(key => key.startsWith('orders-'));
+    allKeys.forEach(key => {
+      const dayOrders = JSON.parse(localStorage.getItem(key) || '[]');
+      allOrders = allOrders.concat(dayOrders.map(order => ({ ...order, orderKey: key })));
+    });
+    
+    // เรียงลำดับตามเวลาล่าสุด (เหมือนกับที่แสดงในหน้าเว็บ)
+    allOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    // ตรวจสอบว่า index ถูกต้องหรือไม่
+    if (index < 0 || index >= allOrders.length) {
+      showToast('ไม่พบข้อมูลออเดอร์ (index ไม่ถูกต้อง)', 'danger');
+      return;
+    }
+
+    const orderToEdit = allOrders[index];
+    if (!orderToEdit) {
+      showToast('ไม่พบข้อมูลออเดอร์', 'danger');
+      return;
+    }
+    
+    // Fill the edit form with the order data
+    document.getElementById('edit-order-index').value = index;
+    document.getElementById('edit-orderKey').value = orderToEdit.orderKey;
+    document.getElementById('edit-customer').value = orderToEdit.customer;
+    document.getElementById('edit-orderId').value = orderToEdit.orderId || '';
+    document.getElementById('edit-game').value = orderToEdit.game;
+    document.getElementById('edit-package').value = orderToEdit.package;
+    document.getElementById('edit-channel').value = orderToEdit.channel;
+    document.getElementById('edit-admin').value = orderToEdit.admin;
+    document.getElementById('edit-amount').value = orderToEdit.amount;
+    document.getElementById('edit-timestamp').value = orderToEdit.timestamp;
+    
+    // Handle the rate field visibility
     document.getElementById('edit-rateGroup').style.display = 'block';
-    document.getElementById('edit-rate').value = orderToEdit.rate || '';
-  } else {
-    document.getElementById('edit-rateGroup').style.display = 'none';
+    document.getElementById('edit-rate').value = orderToEdit.rate || 'N/A';
+    
+    // Show the modal
+    const editModal = new bootstrap.Modal(document.getElementById('editOrderModal'));
+    editModal.show();
+  } catch (error) {
+    console.error('Error editing order:', error);
+    showToast('เกิดข้อผิดพลาดในการแก้ไขข้อมูล', 'danger');
   }
-  
-  // Show the modal
-  const editModal = new bootstrap.Modal(document.getElementById('editOrderModal'));
-  editModal.show();
 }
 
 // Add this function to update the order
