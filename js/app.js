@@ -269,161 +269,11 @@ function editOrder(index) {
   }
 }
 
-// Add this function to update the order
-function updateOrder() {
-  // Get the order data from the form
-  const orderKey = document.getElementById('edit-orderKey').value;
-  const customer = document.getElementById('edit-customer').value;
-  const orderId = document.getElementById('edit-orderId').value;
-  const game = document.getElementById('edit-game').value;
-  const packageName = document.getElementById('edit-package').value;
-  const channel = document.getElementById('edit-channel').value;
-  const admin = document.getElementById('edit-admin').value;
-  const amount = document.getElementById('edit-amount').value;
-  const timestamp = document.getElementById('edit-timestamp').value;
-  
-  // Validate required fields
-  if (!customer || !game || !packageName || !channel || !admin || !amount) {
-    showToast('กรุณากรอกข้อมูลให้ครบถ้วน', 'error');
-    return;
-  }
-  
-  // Get the rate if channel is 'อื่นๆ'
-  let rate = null;
-  if (channel === 'อื่นๆ') {
-    rate = document.getElementById('edit-rate').value;
-  }
-  
-  // Get all orders from localStorage
-  const orders = JSON.parse(localStorage.getItem('orders')) || [];
-  
-  // Find the order to update
-  const orderIndex = orders.findIndex(order => order.orderKey === orderKey);
-  
-  if (orderIndex === -1) {
-    showToast('ไม่พบข้อมูลออเดอร์', 'error');
-    return;
-  }
-  
-  // Update the order
-  orders[orderIndex] = {
-    orderKey,
-    customer,
-    orderId,
-    game,
-    package: packageName,
-    channel,
-    admin,
-    amount: parseFloat(amount),
-    timestamp,
-    rate
-  };
-  
-  // Save the updated orders to localStorage
-  localStorage.setItem('orders', JSON.stringify(orders));
-  
-  // Close the modal
-  const editModal = bootstrap.Modal.getInstance(document.getElementById('editOrderModal'));
-  editModal.hide();
-  
-  // Refresh the order list
-  displayOrders();
-  
-  // Show success message
-  showToast('อัปเดตออเดอร์เรียบร้อยแล้ว', 'success');
-}
-
-// Add this function to toggle the rate field in the edit form
-function toggleEditRateField() {
-  const channel = document.getElementById('edit-channel').value;
-  const rateGroup = document.getElementById('edit-rateGroup');
-  
-  if (channel === 'อื่นๆ') {
-    rateGroup.style.display = 'block';
-  } else {
-    rateGroup.style.display = 'none';
-  }
-}
-
-// Add this function to show toast notifications
-function showToast(message, type = 'success') {
-  const toast = document.getElementById('toast');
-  const toastMessage = document.getElementById('toast-message');
-  
-  // Set the message
-  toastMessage.textContent = message;
-  
-  // Set the toast type (success or error)
-  toast.classList.remove('bg-success', 'bg-danger');
-  toast.classList.add(type === 'success' ? 'bg-success' : 'bg-danger');
-  
-  // Show the toast
-  const bsToast = new bootstrap.Toast(toast);
-  bsToast.show();
-}
-
-function deleteOrder(index) {
-  try {
-    // หาออเดอร์จากทุกวัน
-    let allOrders = [];
-    const allKeys = Object.keys(localStorage).filter(key => key.startsWith('orders-'));
-    allKeys.forEach(key => {
-      const dayOrders = JSON.parse(localStorage.getItem(key) || '[]');
-      allOrders = allOrders.concat(dayOrders.map(order => ({ ...order, orderKey: key })));
-    });
-    
-    // เรียงลำดับตามเวลาล่าสุด (เหมือนกับที่แสดงในหน้าเว็บ)
-    allOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    // ตรวจสอบว่า index ถูกต้องหรือไม่
-    if (index < 0 || index >= allOrders.length) {
-      showToast('ไม่พบข้อมูลออเดอร์ (index ไม่ถูกต้อง)', 'danger');
-      return;
-    }
-
-    const selectedOrder = allOrders[index];
-    if (!selectedOrder) {
-      showToast('ไม่พบข้อมูลออเดอร์', 'danger');
-      return;
-    }
-
-    if (!confirm('คุณต้องการลบออเดอร์นี้ใช่หรือไม่?')) return;
-    
-    // ใช้ orderKey ที่เก็บไว้กับออเดอร์
-    const orderKey = selectedOrder.orderKey;
-    
-    // ตรวจสอบว่ามี orderKey หรือไม่
-    if (!orderKey) {
-      showToast('ไม่พบข้อมูลวันที่ของออเดอร์', 'danger');
-      return;
-    }
-    
-    // ลบออเดอร์จากวันที่ถูกต้อง
-    const dayOrders = JSON.parse(localStorage.getItem(orderKey) || '[]');
-    const dayIndex = dayOrders.findIndex(order => order.orderId === selectedOrder.orderId);
-    
-    if (dayIndex === -1) {
-      showToast('ไม่พบข้อมูลออเดอร์ในระบบ', 'danger');
-      return;
-    }
-    
-    dayOrders.splice(dayIndex, 1);
-    localStorage.setItem(orderKey, JSON.stringify(dayOrders));
-    
-    showToast('ลบออเดอร์สำเร็จ');
-    renderOrders();
-    updateStats();
-  } catch (error) {
-    console.error('Error deleting order:', error);
-    showToast('เกิดข้อผิดพลาดในการลบข้อมูล', 'danger');
-  }
-}
-
 // ฟังก์ชันสำหรับอัพเดทออเดอร์
 function updateOrder() {
   try {
     // ดึงข้อมูลจากฟอร์ม
-    let orderKey = document.getElementById('edit-orderKey').value;
+    const orderKey = document.getElementById('edit-orderKey').value;
     const timestamp = document.getElementById('edit-timestamp').value;
     const orderId = document.getElementById('edit-orderId').value;
     const index = parseInt(document.getElementById('edit-order-index').value);
@@ -436,14 +286,9 @@ function updateOrder() {
       return;
     }
     
-    // ตรวจสอบว่า orderKey และ orderId มีค่าหรือไม่
+    // ตรวจสอบว่า orderKey มีค่าหรือไม่
     if (!orderKey) {
       showToast('ไม่พบข้อมูลวันที่ของออเดอร์', 'danger');
-      return;
-    }
-    
-    if (!orderId) {
-      showToast('ไม่พบหมายเลขออเดอร์', 'danger');
       return;
     }
     
@@ -454,86 +299,28 @@ function updateOrder() {
     const orderIndex = dayOrders.findIndex(order => order.orderId === orderId);
     
     if (orderIndex === -1) {
-      // ถ้าไม่พบออเดอร์ด้วย orderId ให้ลองค้นหาด้วยวิธีอื่น
-      // ดึงข้อมูลออเดอร์ทั้งหมดเพื่อตรวจสอบกับ index
-      let allOrders = [];
-      const allKeys = Object.keys(localStorage).filter(key => key.startsWith('orders-'));
-      allKeys.forEach(key => {
-        const orders = JSON.parse(localStorage.getItem(key) || '[]');
-        allOrders = allOrders.concat(orders.map(order => ({ ...order, orderKey: key })));
-      });
-      
-      // เรียงลำดับตามเวลาล่าสุด (เหมือนกับที่แสดงในหน้าเว็บ)
-      allOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-      
-      // ตรวจสอบว่า index ถูกต้องหรือไม่
-      if (index < 0 || index >= allOrders.length) {
-        showToast('ไม่พบข้อมูลออเดอร์ (index ไม่ถูกต้อง)', 'danger');
-        return;
-      }
-      
-      // ใช้ข้อมูลจาก index
-      const selectedOrder = allOrders[index];
-      if (!selectedOrder) {
-        showToast('ไม่พบข้อมูลออเดอร์', 'danger');
-        return;
-      }
-      
-      // อัพเดทค่า orderKey ถ้าจำเป็น
-      if (selectedOrder.orderKey && selectedOrder.orderKey !== orderKey) {
-        orderKey = selectedOrder.orderKey;
-        // ดึงข้อมูลออเดอร์จากวันที่ถูกต้อง
-        const newDayOrders = JSON.parse(localStorage.getItem(orderKey) || '[]');
-        // ค้นหาออเดอร์ด้วย orderId
-        const newOrderIndex = newDayOrders.findIndex(order => order.orderId === selectedOrder.orderId);
-        
-        if (newOrderIndex === -1) {
-          showToast('ไม่พบข้อมูลออเดอร์ในระบบ', 'danger');
-          return;
-        }
-        
-        // สร้างข้อมูลออเดอร์ที่อัพเดท
-        const updatedOrder = {
-          orderId: selectedOrder.orderId,
-          customer: c('edit-customer'),
-          game: c('edit-game'),
-          package: c('edit-package'),
-          channel: c('edit-channel'),
-          rate: c('edit-rate') !== 'N/A' ? c('edit-rate') : 'N/A',
-          admin: c('edit-admin'),
-          amount: parseFloat(c('edit-amount')),
-          timestamp: timestamp
-        };
-        
-        // อัพเดทข้อมูลในออเดอร์ที่เลือก
-        newDayOrders[newOrderIndex] = updatedOrder;
-        
-        // บันทึกข้อมูลลงใน localStorage
-        localStorage.setItem(orderKey, JSON.stringify(newDayOrders));
-      } else {
-        showToast('ไม่พบข้อมูลออเดอร์ในระบบ', 'danger');
-        return;
-      }
-    } else {
-      // สร้างข้อมูลออเดอร์ที่อัพเดท
-      const updatedOrder = {
-        orderId: orderId,
-        customer: c('edit-customer'),
-        game: c('edit-game'),
-        package: c('edit-package'),
-        channel: c('edit-channel'),
-        rate: c('edit-rate') !== 'N/A' ? c('edit-rate') : 'N/A',
-        admin: c('edit-admin'),
-        amount: parseFloat(c('edit-amount')),
-        timestamp: timestamp
-      };
-      
-      // อัพเดทข้อมูลในออเดอร์ที่เลือก
-      dayOrders[orderIndex] = updatedOrder;
-      
-      // บันทึกข้อมูลลงใน localStorage
-      localStorage.setItem(orderKey, JSON.stringify(dayOrders));
+      showToast('ไม่พบข้อมูลออเดอร์ในระบบ', 'danger');
+      return;
     }
+    
+    // สร้างข้อมูลออเดอร์ที่อัพเดท
+    const updatedOrder = {
+      orderId: orderId,
+      customer: c('edit-customer'),
+      game: c('edit-game'),
+      package: c('edit-package'),
+      channel: c('edit-channel'),
+      rate: c('edit-rate') || 'N/A',
+      admin: c('edit-admin'),
+      amount: parseFloat(c('edit-amount')),
+      timestamp: timestamp
+    };
+    
+    // อัพเดทข้อมูลในออเดอร์ที่เลือก
+    dayOrders[orderIndex] = updatedOrder;
+    
+    // บันทึกข้อมูลลงใน localStorage
+    localStorage.setItem(orderKey, JSON.stringify(dayOrders));
     
     // ปิด Modal และแสดงข้อความสำเร็จ
     bootstrap.Modal.getInstance(document.getElementById('editOrderModal')).hide();
