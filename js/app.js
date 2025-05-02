@@ -221,62 +221,6 @@ function renderOrders() {
 // ฟังก์ชันสำหรับแก้ไขออเดอร์
 function editOrder(index) {
   try {
-    let allOrders = [];
-    const allKeys = Object.keys(localStorage).filter(key => key.startsWith('orders-'));
-    
-    // ดึงข้อมูลออเดอร์จากทุกวันและเพิ่ม orderKey
-    allKeys.forEach(key => {
-      const dayOrders = JSON.parse(localStorage.getItem(key) || '[]');
-      allOrders = allOrders.concat(dayOrders.map(order => ({ ...order, orderKey: key })));
-    });
-    
-    // เรียงลำดับตามเวลาล่าสุด (เหมือนกับที่แสดงในหน้าเว็บ)
-    allOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    
-    // ตรวจสอบว่า index ถูกต้องหรือไม่
-    if (index < 0 || index >= allOrders.length) {
-      showToast('ไม่พบข้อมูลออเดอร์ (index ไม่ถูกต้อง)', 'danger');
-      return;
-    }
-    
-    const selectedOrder = allOrders[index];
-    if (!selectedOrder) {
-      showToast('ไม่พบข้อมูลออเดอร์', 'danger');
-      return;
-    }
-    
-    // ตรวจสอบว่ามี orderKey หรือไม่
-    if (!selectedOrder.orderKey) {
-      showToast('ไม่พบข้อมูลวันที่ของออเดอร์', 'danger');
-      return;
-    }
-    
-    // กำหนดค่าให้กับฟอร์มแก้ไข
-    document.getElementById('edit-order-index').value = index;
-    document.getElementById('edit-orderId').value = selectedOrder.orderId;
-    document.getElementById('edit-customer').value = selectedOrder.customer;
-    document.getElementById('edit-game').value = selectedOrder.game;
-    document.getElementById('edit-package').value = selectedOrder.package;
-    document.getElementById('edit-channel').value = selectedOrder.channel;
-    document.getElementById('edit-rate').value = selectedOrder.rate || 'N/A';
-    document.getElementById('edit-admin').value = selectedOrder.admin;
-    document.getElementById('edit-amount').value = selectedOrder.amount;
-    document.getElementById('edit-timestamp').value = selectedOrder.timestamp;
-    document.getElementById('edit-orderKey').value = selectedOrder.orderKey;
-    
-    // แสดงหรือซ่อนฟิลด์อัตราแลกเปลี่ยนตามช่องทางที่เลือก
-    toggleEditRateField();
-    
-    // แสดง Modal แก้ไขออเดอร์
-    new bootstrap.Modal(document.getElementById('editOrderModal')).show();
-  } catch (error) {
-    console.error('Error editing order:', error);
-    showToast('เกิดข้อผิดพลาดในการแก้ไขข้อมูล', 'danger');
-  }
-}
-
-function deleteOrder(index) {
-  try {
     // หาออเดอร์จากทุกวัน
     let allOrders = [];
     const allKeys = Object.keys(localStorage).filter(key => key.startsWith('orders-'));
@@ -294,41 +238,34 @@ function deleteOrder(index) {
       return;
     }
 
-    const selectedOrder = allOrders[index];
-    if (!selectedOrder) {
+    const orderToEdit = allOrders[index];
+    if (!orderToEdit) {
       showToast('ไม่พบข้อมูลออเดอร์', 'danger');
       return;
     }
-
-    if (!confirm('คุณต้องการลบออเดอร์นี้ใช่หรือไม่?')) return;
     
-    // ใช้ orderKey ที่เก็บไว้กับออเดอร์
-    const orderKey = selectedOrder.orderKey;
+    // Fill the edit form with the order data
+    document.getElementById('edit-order-index').value = index;
+    document.getElementById('edit-orderKey').value = orderToEdit.orderKey;
+    document.getElementById('edit-customer').value = orderToEdit.customer;
+    document.getElementById('edit-orderId').value = orderToEdit.orderId || '';
+    document.getElementById('edit-game').value = orderToEdit.game;
+    document.getElementById('edit-package').value = orderToEdit.package;
+    document.getElementById('edit-channel').value = orderToEdit.channel;
+    document.getElementById('edit-admin').value = orderToEdit.admin;
+    document.getElementById('edit-amount').value = orderToEdit.amount;
+    document.getElementById('edit-timestamp').value = orderToEdit.timestamp;
     
-    // ตรวจสอบว่ามี orderKey หรือไม่
-    if (!orderKey) {
-      showToast('ไม่พบข้อมูลวันที่ของออเดอร์', 'danger');
-      return;
-    }
+    // Handle the rate field visibility
+    document.getElementById('edit-rateGroup').style.display = 'block';
+    document.getElementById('edit-rate').value = orderToEdit.rate || 'N/A';
     
-    // ลบออเดอร์จากวันที่ถูกต้อง
-    const dayOrders = JSON.parse(localStorage.getItem(orderKey) || '[]');
-    const dayIndex = dayOrders.findIndex(order => order.orderId === selectedOrder.orderId);
-    
-    if (dayIndex === -1) {
-      showToast('ไม่พบข้อมูลออเดอร์ในระบบ', 'danger');
-      return;
-    }
-    
-    dayOrders.splice(dayIndex, 1);
-    localStorage.setItem(orderKey, JSON.stringify(dayOrders));
-    
-    showToast('ลบออเดอร์สำเร็จ');
-    renderOrders();
-    updateStats();
+    // Show the modal
+    const editModal = new bootstrap.Modal(document.getElementById('editOrderModal'));
+    editModal.show();
   } catch (error) {
-    console.error('Error deleting order:', error);
-    showToast('เกิดข้อผิดพลาดในการลบข้อมูล', 'danger');
+    console.error('Error editing order:', error);
+    showToast('เกิดข้อผิดพลาดในการแก้ไขข้อมูล', 'danger');
   }
 }
 
@@ -336,7 +273,7 @@ function deleteOrder(index) {
 function updateOrder() {
   try {
     // ดึงข้อมูลจากฟอร์ม
-    let orderKey = document.getElementById('edit-orderKey').value;
+    const orderKey = document.getElementById('edit-orderKey').value;
     const timestamp = document.getElementById('edit-timestamp').value;
     const orderId = document.getElementById('edit-orderId').value;
     const index = parseInt(document.getElementById('edit-order-index').value);
@@ -349,14 +286,9 @@ function updateOrder() {
       return;
     }
     
-    // ตรวจสอบว่า orderKey และ orderId มีค่าหรือไม่
+    // ตรวจสอบว่า orderKey มีค่าหรือไม่
     if (!orderKey) {
       showToast('ไม่พบข้อมูลวันที่ของออเดอร์', 'danger');
-      return;
-    }
-    
-    if (!orderId) {
-      showToast('ไม่พบหมายเลขออเดอร์', 'danger');
       return;
     }
     
@@ -367,86 +299,28 @@ function updateOrder() {
     const orderIndex = dayOrders.findIndex(order => order.orderId === orderId);
     
     if (orderIndex === -1) {
-      // ถ้าไม่พบออเดอร์ด้วย orderId ให้ลองค้นหาด้วยวิธีอื่น
-      // ดึงข้อมูลออเดอร์ทั้งหมดเพื่อตรวจสอบกับ index
-      let allOrders = [];
-      const allKeys = Object.keys(localStorage).filter(key => key.startsWith('orders-'));
-      allKeys.forEach(key => {
-        const orders = JSON.parse(localStorage.getItem(key) || '[]');
-        allOrders = allOrders.concat(orders.map(order => ({ ...order, orderKey: key })));
-      });
-      
-      // เรียงลำดับตามเวลาล่าสุด (เหมือนกับที่แสดงในหน้าเว็บ)
-      allOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-      
-      // ตรวจสอบว่า index ถูกต้องหรือไม่
-      if (index < 0 || index >= allOrders.length) {
-        showToast('ไม่พบข้อมูลออเดอร์ (index ไม่ถูกต้อง)', 'danger');
-        return;
-      }
-      
-      // ใช้ข้อมูลจาก index
-      const selectedOrder = allOrders[index];
-      if (!selectedOrder) {
-        showToast('ไม่พบข้อมูลออเดอร์', 'danger');
-        return;
-      }
-      
-      // อัพเดทค่า orderKey ถ้าจำเป็น
-      if (selectedOrder.orderKey && selectedOrder.orderKey !== orderKey) {
-        orderKey = selectedOrder.orderKey;
-        // ดึงข้อมูลออเดอร์จากวันที่ถูกต้อง
-        const newDayOrders = JSON.parse(localStorage.getItem(orderKey) || '[]');
-        // ค้นหาออเดอร์ด้วย orderId
-        const newOrderIndex = newDayOrders.findIndex(order => order.orderId === selectedOrder.orderId);
-        
-        if (newOrderIndex === -1) {
-          showToast('ไม่พบข้อมูลออเดอร์ในระบบ', 'danger');
-          return;
-        }
-        
-        // สร้างข้อมูลออเดอร์ที่อัพเดท
-        const updatedOrder = {
-          orderId: selectedOrder.orderId,
-          customer: c('edit-customer'),
-          game: c('edit-game'),
-          package: c('edit-package'),
-          channel: c('edit-channel'),
-          rate: c('edit-rate') !== 'N/A' ? c('edit-rate') : 'N/A',
-          admin: c('edit-admin'),
-          amount: parseFloat(c('edit-amount')),
-          timestamp: timestamp
-        };
-        
-        // อัพเดทข้อมูลในออเดอร์ที่เลือก
-        newDayOrders[newOrderIndex] = updatedOrder;
-        
-        // บันทึกข้อมูลลงใน localStorage
-        localStorage.setItem(orderKey, JSON.stringify(newDayOrders));
-      } else {
-        showToast('ไม่พบข้อมูลออเดอร์ในระบบ', 'danger');
-        return;
-      }
-    } else {
-      // สร้างข้อมูลออเดอร์ที่อัพเดท
-      const updatedOrder = {
-        orderId: orderId,
-        customer: c('edit-customer'),
-        game: c('edit-game'),
-        package: c('edit-package'),
-        channel: c('edit-channel'),
-        rate: c('edit-rate') !== 'N/A' ? c('edit-rate') : 'N/A',
-        admin: c('edit-admin'),
-        amount: parseFloat(c('edit-amount')),
-        timestamp: timestamp
-      };
-      
-      // อัพเดทข้อมูลในออเดอร์ที่เลือก
-      dayOrders[orderIndex] = updatedOrder;
-      
-      // บันทึกข้อมูลลงใน localStorage
-      localStorage.setItem(orderKey, JSON.stringify(dayOrders));
+      showToast('ไม่พบข้อมูลออเดอร์ในระบบ', 'danger');
+      return;
     }
+    
+    // สร้างข้อมูลออเดอร์ที่อัพเดท
+    const updatedOrder = {
+      orderId: orderId,
+      customer: c('edit-customer'),
+      game: c('edit-game'),
+      package: c('edit-package'),
+      channel: c('edit-channel'),
+      rate: c('edit-rate') || 'N/A',
+      admin: c('edit-admin'),
+      amount: parseFloat(c('edit-amount')),
+      timestamp: timestamp
+    };
+    
+    // อัพเดทข้อมูลในออเดอร์ที่เลือก
+    dayOrders[orderIndex] = updatedOrder;
+    
+    // บันทึกข้อมูลลงใน localStorage
+    localStorage.setItem(orderKey, JSON.stringify(dayOrders));
     
     // ปิด Modal และแสดงข้อความสำเร็จ
     bootstrap.Modal.getInstance(document.getElementById('editOrderModal')).hide();
